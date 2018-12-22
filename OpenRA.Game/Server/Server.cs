@@ -333,13 +333,6 @@ namespace OpenRA.Server
 					IsAdmin = !LobbyInfo.Clients.Any(c1 => c1.IsAdmin)
 				};
 
-				if (client.IsObserver && !LobbyInfo.GlobalSettings.AllowSpectators)
-				{
-					SendOrderTo(newConn, "ServerError", "The game is full");
-					DropClient(newConn);
-					return;
-				}
-
 				if (ModData.Manifest.Id != handshake.Mod)
 				{
 					Log.Write("server", "Rejected connection from {0}; mods do not match.",
@@ -373,6 +366,13 @@ namespace OpenRA.Server
 				Action completeConnection = () =>
 				{
 					client.Slot = LobbyInfo.FirstEmptySlot();
+
+					if (client.IsObserver && !LobbyInfo.GlobalSettings.AllowSpectators)
+					{
+						SendOrderTo(newConn, "ServerError", "The game is full");
+						DropClient(newConn);
+						return;
+					}
 
 					if (client.Slot != null)
 						SyncClientToPlayerReference(client, Map.Players.Players[client.Slot]);
