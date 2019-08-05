@@ -21,5 +21,7 @@ namespace OpenRA
 		IEnumerable<IRenderable> Render(WorldRenderer wr, World world);
 		IEnumerable<IRenderable> RenderAboveShroud(WorldRenderer wr, World world);
 		string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi);
+		void Deactivate();
+		bool HandleKeyPress(KeyInput e);
 	}
 }

@@ -10,17 +10,20 @@
 #endregion
 
 using System;
-using System.Drawing;
 using System.IO;
 using System.Runtime.InteropServices;
+using OpenRA.Primitives;
 using SDL2;
 
 namespace OpenRA.Platforms.Default
 {
 	class Sdl2HardwareCursorException : Exception
 	{
-		public Sdl2HardwareCursorException(string message) : base(message) { }
-		public Sdl2HardwareCursorException(string message, Exception innerException) : base(message, innerException) { }
+		public Sdl2HardwareCursorException(string message)
+			: base(message) { }
+
+		public Sdl2HardwareCursorException(string message, Exception innerException)
+			: base(message, innerException) { }
 	}
 
 	sealed class Sdl2HardwareCursor : IHardwareCursor

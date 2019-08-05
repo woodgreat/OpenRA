@@ -9,7 +9,7 @@
  */
 #endregion
 
-using System.Drawing;
+using OpenRA.Primitives;
 
 namespace OpenRA.Platforms.Default
 {
@@ -23,6 +23,11 @@ namespace OpenRA.Platforms.Default
 		public ISoundEngine CreateSound(string device)
 		{
 			return new OpenAlSoundEngine(device);
+		}
+
+		public IFont CreateFont(byte[] data)
+		{
+			return new FreeTypeFont(data);
 		}
 	}
 }

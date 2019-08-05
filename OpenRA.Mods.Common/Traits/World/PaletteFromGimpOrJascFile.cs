@@ -11,9 +11,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using OpenRA.Graphics;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -21,7 +21,8 @@ namespace OpenRA.Mods.Common.Traits
 	[Desc("Load a GIMP .gpl or JASC .pal palette file. Supports per-color alpha. Index 0 is hardcoded to be fully transparent/invisible.")]
 	class PaletteFromGimpOrJascFileInfo : ITraitInfo
 	{
-		[FieldLoader.Require, PaletteDefinition]
+		[PaletteDefinition]
+		[FieldLoader.Require]
 		[Desc("Palette name used internally.")]
 		public readonly string Name = null;
 

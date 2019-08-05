@@ -11,7 +11,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Net;
 using OpenRA.Graphics;
@@ -41,11 +40,16 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		public static void ShowSlotDropDown(DropDownButtonWidget dropdown, Session.Slot slot,
 			Session.Client client, OrderManager orderManager, MapPreview map)
 		{
-			var options = new Dictionary<string, IEnumerable<SlotDropDownOption>>() { { "Slot", new List<SlotDropDownOption>()
+			var options = new Dictionary<string, IEnumerable<SlotDropDownOption>>
 			{
-				new SlotDropDownOption("Open", "slot_open " + slot.PlayerReference, () => (!slot.Closed && client == null)),
-				new SlotDropDownOption("Closed", "slot_close " + slot.PlayerReference, () => slot.Closed)
-			} } };
+				{
+					"Slot", new List<SlotDropDownOption>
+					{
+						new SlotDropDownOption("Open", "slot_open " + slot.PlayerReference, () => (!slot.Closed && client == null)),
+						new SlotDropDownOption("Closed", "slot_close " + slot.PlayerReference, () => slot.Closed)
+					}
+				}
+			};
 
 			var bots = new List<SlotDropDownOption>();
 			if (slot.AllowBots)
@@ -70,11 +74,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				return item;
 			};
 
-			dropdown.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", 167, options, setupItem);
+			dropdown.ShowDropDown("LABEL_DROPDOWN_TEMPLATE", 180, options, setupItem);
 		}
 
 		public static void ShowPlayerActionDropDown(DropDownButtonWidget dropdown, Session.Slot slot,
-			Session.Client c, OrderManager orderManager, Widget lobby,  Action before, Action after)
+			Session.Client c, OrderManager orderManager, Widget lobby, Action before, Action after)
 		{
 			Action<bool> okPressed = tempBan => { orderManager.IssueOrder(Order.Command("kick {0} {1}".F(c.Index, tempBan))); after(); };
 			var onClick = new Action(() =>
@@ -194,7 +198,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var options = factions.Where(f => f.Value.Selectable).GroupBy(f => f.Value.Side)
 				.ToDictionary(g => g.Key ?? "", g => g.Select(f => f.Key));
 
-			dropdown.ShowDropDown("FACTION_DROPDOWN_TEMPLATE", 150, options, setupItem);
+			dropdown.ShowDropDown("FACTION_DROPDOWN_TEMPLATE", 154, options, setupItem);
 		}
 
 		public static void ShowColorDropDown(DropDownButtonWidget color, Session.Client client,
@@ -212,7 +216,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				orderManager.IssueOrder(Order.Command("color {0} {1}".F(client.Index, preview.Color)));
 			};
 
-			Action<HSLColor> onChange = c => preview.Color = c;
+			Action<Color> onChange = c => preview.Color = c;
 
 			var colorChooser = Game.LoadWidget(world, "COLOR_CHOOSER", null, new WidgetArgs()
 			{
@@ -419,7 +423,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		}
 
 		public static void SetupPlayerActionWidget(Widget parent, Session.Slot s, Session.Client c, OrderManager orderManager,
-			WorldRenderer worldRenderer,  Widget lobby, Action before, Action after)
+			WorldRenderer worldRenderer, Widget lobby, Action before, Action after)
 		{
 			var slot = parent.Get<DropDownButtonWidget>("PLAYER_ACTION");
 			slot.IsVisible = () => Game.IsHost && c.Index != orderManager.LocalClient.Index;
@@ -485,7 +489,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		public static void SetupColorWidget(Widget parent, Session.Slot s, Session.Client c)
 		{
 			var color = parent.Get<ColorBlockWidget>("COLORBLOCK");
-			color.GetColor = () => c.Color.RGB;
+			color.GetColor = () => c.Color;
 		}
 
 		public static void SetupEditableFactionWidget(Widget parent, Session.Slot s, Session.Client c, OrderManager orderManager,
@@ -579,35 +583,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			HideChildWidget(parent, "STATUS_IMAGE");
 		}
 
-		public static void AddPlayerFlagAndName(ScrollItemWidget template, Player player)
-		{
-			var flag = template.Get<ImageWidget>("FLAG");
-			flag.GetImageCollection = () => "flags";
-			if (player.World.RenderPlayer != null && player.World.RenderPlayer.Stances[player] != Stance.Ally)
-				flag.GetImageName = () => player.DisplayFaction.InternalName;
-			else
-				flag.GetImageName = () => player.Faction.InternalName;
-
-			var client = player.World.LobbyInfo.ClientWithIndex(player.ClientIndex);
-			var playerName = template.Get<LabelWidget>("PLAYER");
-			var playerNameFont = Game.Renderer.Fonts[playerName.Font];
-			var suffixLength = new CachedTransform<string, int>(s => playerNameFont.Measure(s).X);
-			var name = new CachedTransform<Pair<string, int>, string>(c =>
-				WidgetUtils.TruncateText(c.First, playerName.Bounds.Width - c.Second, playerNameFont));
-
-			playerName.GetText = () =>
-			{
-				var suffix = player.WinState == WinState.Undefined ? "" : " (" + player.WinState + ")";
-				if (client != null && client.State == Session.ClientState.Disconnected)
-					suffix = " (Gone)";
-
-				var sl = suffixLength.Update(suffix);
-				return name.Update(Pair.New(player.PlayerName, sl)) + suffix;
-			};
-
-			playerName.GetColor = () => player.Color.RGB;
-		}
-
 		public static string GetExternalIP(Session.Client client, OrderManager orderManager)
 		{
 			var address = client != null ? client.IpAddress : "";
@@ -622,21 +597,23 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			return address;
 		}
 
-		public static void SetupChatLine(ContainerWidget template, Color c, DateTime time, string from, string text)
+		public static void SetupChatLine(ContainerWidget template, DateTime time, string name, Color nameColor, string text, Color textColor)
 		{
 			var nameLabel = template.Get<LabelWidget>("NAME");
 			var timeLabel = template.Get<LabelWidget>("TIME");
 			var textLabel = template.Get<LabelWidget>("TEXT");
 
-			var name = from + ":";
+			var nameText = name + ":";
 			var font = Game.Renderer.Fonts[nameLabel.Font];
-			var nameSize = font.Measure(from);
+			var nameSize = font.Measure(nameText);
 
 			timeLabel.GetText = () => "{0:D2}:{1:D2}".F(time.Hour, time.Minute);
 
-			nameLabel.GetColor = () => c;
-			nameLabel.GetText = () => name;
+			nameLabel.GetColor = () => nameColor;
+			nameLabel.GetText = () => nameText;
 			nameLabel.Bounds.Width = nameSize.X;
+
+			textLabel.GetColor = () => textColor;
 			textLabel.Bounds.X += nameSize.X;
 			textLabel.Bounds.Width -= nameSize.X;
 

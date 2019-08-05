@@ -10,16 +10,17 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Drawing;
 using OpenRA.Graphics;
 using OpenRA.Mods.Cnc.Activities;
 using OpenRA.Mods.Common.Graphics;
 using OpenRA.Mods.Common.Orders;
+using OpenRA.Mods.Common.Traits;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Cnc.Traits
 {
-	class PortableChronoInfo : ITraitInfo
+	class PortableChronoInfo : ITraitInfo, Requires<IMoveInfo>
 	{
 		[Desc("Cooldown in ticks until the unit can teleport.")]
 		public readonly int ChargeDelay = 500;
@@ -51,19 +52,23 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Flash the screen on teleporting.")]
 		public readonly bool FlashScreen = false;
 
-		[VoiceReference] public readonly string Voice = "Action";
+		[VoiceReference]
+		public readonly string Voice = "Action";
 
-		public object Create(ActorInitializer init) { return new PortableChrono(this); }
+		public object Create(ActorInitializer init) { return new PortableChrono(init.Self, this); }
 	}
 
 	class PortableChrono : IIssueOrder, IResolveOrder, ITick, ISelectionBar, IOrderVoice, ISync
 	{
-		[Sync] int chargeTick = 0;
 		public readonly PortableChronoInfo Info;
+		readonly IMove move;
+		[Sync]
+		int chargeTick = 0;
 
-		public PortableChrono(PortableChronoInfo info)
+		public PortableChrono(Actor self, PortableChronoInfo info)
 		{
 			Info = info;
+			move = self.Trait<IMove>();
 		}
 
 		void ITick.Tick(Actor self)
@@ -102,19 +107,25 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		public void ResolveOrder(Actor self, Order order)
 		{
-			if (order.OrderString == "PortableChronoTeleport" && CanTeleport && order.Target.Type != TargetType.Invalid)
+			if (order.OrderString == "PortableChronoTeleport" && order.Target.Type != TargetType.Invalid)
 			{
 				var maxDistance = Info.HasDistanceLimit ? Info.MaxDistance : (int?)null;
-				self.CancelActivity();
+				if (!order.Queued)
+					self.CancelActivity();
 
 				var cell = self.World.Map.CellContaining(order.Target.CenterPosition);
+				if (maxDistance != null)
+					self.QueueActivity(move.MoveWithinRange(order.Target, WDist.FromCells(maxDistance.Value), targetLineColor: Color.LawnGreen));
+
 				self.QueueActivity(new Teleport(self, cell, maxDistance, Info.KillCargo, Info.FlashScreen, Info.ChronoshiftSound));
+				self.QueueActivity(move.MoveTo(cell, 5, Color.LawnGreen));
+				self.ShowTargetLines();
 			}
 		}
 
 		string IOrderVoice.VoicePhraseForOrder(Actor self, Order order)
 		{
-			return order.OrderString == "PortableChronoTeleport" && CanTeleport ? Info.Voice : null;
+			return order.OrderString == "PortableChronoTeleport" ? Info.Voice : null;
 		}
 
 		public void ResetChargeTime()
@@ -171,7 +182,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		}
 	}
 
-	class PortableChronoOrderGenerator : IOrderGenerator
+	class PortableChronoOrderGenerator : OrderGenerator
 	{
 		readonly Actor self;
 		readonly PortableChronoInfo info;
@@ -182,7 +193,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			this.info = info;
 		}
 
-		public IEnumerable<Order> Order(World world, CPos cell, int2 worldPixel, MouseInput mi)
+		protected override IEnumerable<Order> OrderInner(World world, CPos cell, int2 worldPixel, MouseInput mi)
 		{
 			if (mi.Button == Game.Settings.Game.MouseButtonPreference.Cancel)
 			{
@@ -198,18 +209,18 @@ namespace OpenRA.Mods.Cnc.Traits
 			}
 		}
 
-		public void Tick(World world)
+		protected override void Tick(World world)
 		{
 			if (!self.IsInWorld || self.IsDead)
 				world.CancelInputMode();
 		}
 
-		public IEnumerable<IRenderable> Render(WorldRenderer wr, World world)
+		protected override IEnumerable<IRenderable> Render(WorldRenderer wr, World world)
 		{
 			yield break;
 		}
 
-		public IEnumerable<IRenderable> RenderAboveShroud(WorldRenderer wr, World world)
+		protected override IEnumerable<IRenderable> RenderAboveShroud(WorldRenderer wr, World world)
 		{
 			if (!self.IsInWorld || self.Owner != self.World.LocalPlayer)
 				yield break;
@@ -225,7 +236,7 @@ namespace OpenRA.Mods.Cnc.Traits
 				Color.FromArgb(96, Color.Black));
 		}
 
-		public string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi)
+		protected override string GetCursor(World world, CPos cell, int2 worldPixel, MouseInput mi)
 		{
 			if (self.IsInWorld && self.Location != cell
 				&& self.Trait<PortableChrono>().CanTeleport && self.Owner.Shroud.IsExplored(cell))

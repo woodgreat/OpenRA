@@ -10,7 +10,6 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using OpenRA.Activities;
 using OpenRA.Mods.Common;
@@ -65,8 +64,12 @@ namespace OpenRA.Mods.Cnc.Traits
 
 		IEnumerable<int> speedModifiers;
 
-		[Sync] public int Facing { get; set; }
-		[Sync] public WPos CenterPosition { get; private set; }
+		[Sync]
+		public int Facing { get; set; }
+
+		[Sync]
+		public WPos CenterPosition { get; private set; }
+
 		public CPos TopLeft { get { return self.World.Map.CellContaining(CenterPosition); } }
 
 		// Isn't used anyway
@@ -180,8 +183,8 @@ namespace OpenRA.Mods.Cnc.Traits
 			self.World.UpdateMaps(self, this);
 		}
 
-		public Activity MoveTo(CPos cell, int nearEnough) { return null; }
-		public Activity MoveTo(CPos cell, Actor ignoreActor) { return null; }
+		public Activity MoveTo(CPos cell, int nearEnough, Color? targetLineColor = null) { return null; }
+		public Activity MoveTo(CPos cell, Actor ignoreActor, Color? targetLineColor = null) { return null; }
 		public Activity MoveWithinRange(Target target, WDist range,
 			WPos? initialTargetPosition = null, Color? targetLineColor = null) { return null; }
 		public Activity MoveWithinRange(Target target, WDist minRange, WDist maxRange,
@@ -202,9 +205,7 @@ namespace OpenRA.Mods.Cnc.Traits
 		public CPos NearestMoveableCell(CPos cell) { return cell; }
 
 		// Actors with TDGunboat always move
-		public bool IsMoving { get { return true; } set { } }
-
-		public bool IsMovingVertically { get { return false; } set { } }
+		public MovementType CurrentMovementTypes { get { return MovementType.Horizontal; } set { } }
 
 		public bool CanEnterTargetNow(Actor self, Target target)
 		{

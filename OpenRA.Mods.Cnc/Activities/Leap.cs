@@ -70,20 +70,11 @@ namespace OpenRA.Mods.Cnc.Activities
 			attack.GrantLeapCondition(self);
 		}
 
-		public override Activity Tick(Actor self)
+		public override bool Tick(Actor self)
 		{
-			if (canceled)
-				return NextActivity;
-
 			// Correct the visual position after we jumped
-			if (jumpComplete)
-			{
-				if (ChildActivity == null)
-					return NextActivity;
-
-				ChildActivity = ActivityUtils.RunActivity(self, ChildActivity);
-				return this;
-			}
+			if (canceled || jumpComplete)
+				return true;
 
 			if (target.Type != TargetType.Invalid)
 				targetPosition = target.CenterPosition;
@@ -94,8 +85,6 @@ namespace OpenRA.Mods.Cnc.Activities
 			// We are at the destination
 			if (++ticks >= length)
 			{
-				mobile.IsMoving = false;
-
 				// Revoke the run condition
 				attack.IsAiming = false;
 
@@ -109,13 +98,9 @@ namespace OpenRA.Mods.Cnc.Activities
 
 				jumpComplete = true;
 				QueueChild(mobile.VisualMove(self, position, self.World.Map.CenterOfSubCell(destinationCell, destinationSubCell)));
-
-				return this;
 			}
 
-			mobile.IsMoving = true;
-
-			return this;
+			return false;
 		}
 
 		protected override void OnLastRun(Actor self)

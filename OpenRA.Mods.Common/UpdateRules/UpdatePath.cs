@@ -86,9 +86,8 @@ namespace OpenRA.Mods.Common.UpdateRules
 
 			new UpdatePath("release-20180923", "release-20181215", new UpdateRule[0]),
 
-			new UpdatePath("release-20181215", new UpdateRule[]
+			new UpdatePath("release-20181215", "release-20190314", new UpdateRule[]
 			{
-				// Bleed only changes here
 				new AddCarryableHarvester(),
 				new RenameEditorTilesetFilter(),
 				new DefineNotificationDefaults(),
@@ -113,6 +112,26 @@ namespace OpenRA.Mods.Common.UpdateRules
 				new RemoveAttackIgnoresVisibility(),
 				new ReplacedWithChargeAnimation(),
 				new RefactorResourceLevelAnimating(),
+				new RemoveAttackSuicides(),
+			}),
+
+			new UpdatePath("release-20190314", new UpdateRule[]
+			{
+				// Bleed only changes here
+				new MultipleDeploySounds(),
+				new RemoveSimpleBeacon(),
+				new MakeMobilePausableConditional(),
+				new StreamlineRepairableTraits(),
+				new ReplaceSpecialMoveConsiderations(),
+				new RefactorHarvesterIdle(),
+				new SplitHarvesterSpriteBody(),
+				new RenameAttackMoveConditions(),
+				new RemovePlaceBuildingPalettes(),
+				new RenameHoversOffsetModifier(),
+				new AddAirAttackTypes(),
+				new RenameCarryallDelays(),
+				new AddCanSlide(),
+				new AddAircraftIdleBehavior(),
 			})
 		};
 

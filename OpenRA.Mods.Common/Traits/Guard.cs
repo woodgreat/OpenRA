@@ -9,8 +9,8 @@
  */
 #endregion
 
-using System.Drawing;
 using OpenRA.Mods.Common.Activities;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -18,7 +18,8 @@ namespace OpenRA.Mods.Common.Traits
 	[Desc("The player can give this unit the order to follow and protect friendly units with the Guardable trait.")]
 	public class GuardInfo : ITraitInfo, Requires<IMoveInfo>
 	{
-		[VoiceReference] public readonly string Voice = "Action";
+		[VoiceReference]
+		public readonly string Voice = "Action";
 
 		public object Create(ActorInitializer init) { return new Guard(this); }
 	}
@@ -52,10 +53,9 @@ namespace OpenRA.Mods.Common.Traits
 			if (target.Type != TargetType.Actor)
 				return;
 
-			self.SetTargetLine(target, Color.Yellow);
-
 			var range = target.Actor.Info.TraitInfo<GuardableInfo>().Range;
-			self.QueueActivity(new AttackMoveActivity(self, move.MoveFollow(self, target, WDist.Zero, range, targetLineColor: Color.Yellow)));
+			self.QueueActivity(new AttackMoveActivity(self, () => move.MoveFollow(self, target, WDist.Zero, range, targetLineColor: Color.OrangeRed)));
+			self.ShowTargetLines();
 		}
 
 		public string VoicePhraseForOrder(Actor self, Order order)

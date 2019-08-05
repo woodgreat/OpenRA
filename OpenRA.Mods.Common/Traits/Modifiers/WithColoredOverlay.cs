@@ -10,8 +10,8 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Drawing;
 using OpenRA.Graphics;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -19,8 +19,9 @@ namespace OpenRA.Mods.Common.Traits
 	[Desc("Display a colored overlay when a timed condition is active.")]
 	public class WithColoredOverlayInfo : ConditionalTraitInfo
 	{
+		[PaletteReference]
 		[Desc("Palette to use when rendering the overlay")]
-		[PaletteReference] public readonly string Palette = "invuln";
+		public readonly string Palette = "invuln";
 
 		public override object Create(ActorInitializer init) { return new WithColoredOverlay(this); }
 	}

@@ -10,8 +10,8 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Drawing;
 using OpenRA.Mods.Common.Lint;
+using OpenRA.Primitives;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
@@ -30,12 +30,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			if (Game.Settings.Sound.Mute)
 			{
 				Game.Sound.MuteAudio();
-				Game.AddChatLine(Color.White, "Battlefield Control", "Audio muted");
+				Game.AddChatLine("Battlefield Control", Color.White, "Audio muted");
 			}
 			else
 			{
 				Game.Sound.UnmuteAudio();
-				Game.AddChatLine(Color.White, "Battlefield Control", "Audio unmuted");
+				Game.AddChatLine("Battlefield Control", Color.White, "Audio unmuted");
 			}
 
 			return true;

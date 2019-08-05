@@ -10,7 +10,6 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Traits;
@@ -26,7 +25,8 @@ namespace OpenRA.Mods.Cnc.Traits
 		"Otherwise, a vortex animation is played and damage is dealt each tick, ignoring modifiers.")]
 	public class ConyardChronoReturnInfo : IObservesVariablesInfo, Requires<HealthInfo>, Requires<WithSpriteBodyInfo>
 	{
-		[Desc("Sequence name with the baked-in vortex animation"), SequenceReference]
+		[SequenceReference]
+		[Desc("Sequence name with the baked-in vortex animation")]
 		public readonly string Sequence = "pdox";
 
 		[Desc("Sprite body to play the vortex animation on.")]

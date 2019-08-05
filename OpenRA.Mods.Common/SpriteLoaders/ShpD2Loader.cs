@@ -10,7 +10,6 @@
 #endregion
 
 using System;
-using System.Drawing;
 using System.IO;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.FileFormats;
@@ -20,7 +19,8 @@ namespace OpenRA.Mods.Common.SpriteLoaders
 {
 	public class ShpD2Loader : ISpriteLoader
 	{
-		[Flags] enum FormatFlags : int
+		[Flags]
+		enum FormatFlags : int
 		{
 			PaletteTable = 1,
 			NotLCWCompressed = 2,

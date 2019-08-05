@@ -11,10 +11,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using OpenRA.Graphics;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA
@@ -77,7 +77,8 @@ namespace OpenRA
 		[Desc("Enable client-side report generation to help debug desync errors.")]
 		public bool EnableSyncReports = false;
 
-		public string TimestampFormat = "s";
+		[Desc("Sets the timestamp format. Defaults to the ISO 8601 standard.")]
+		public string TimestampFormat = "yyyy-MM-ddTHH:mm:ss";
 
 		public ServerSettings Clone()
 		{
@@ -128,9 +129,6 @@ namespace OpenRA
 
 		[Desc("Throw an exception if the world sync hash changes while evaluating BotModules.")]
 		public bool SyncCheckBotModuleCode = false;
-
-		[Desc("Throw an exception if an actor activity is ticked after it has been marked as completed.")]
-		public bool StrictActivityChecking = false;
 	}
 
 	public class GraphicSettings
@@ -166,8 +164,6 @@ namespace OpenRA
 
 		public string Language = "english";
 		public string DefaultLanguage = "english";
-
-		public ImageFormat ScreenshotFormat = ImageFormat.Png;
 	}
 
 	public class SoundSettings
@@ -189,9 +185,9 @@ namespace OpenRA
 	{
 		[Desc("Sets the player nickname for in-game and IRC chat.")]
 		public string Name = "Newbie";
-		public HSLColor Color = new HSLColor(75, 255, 180);
+		public Color Color = Color.FromAhsl(75, 255, 180);
 		public string LastServer = "localhost:1234";
-		public HSLColor[] CustomColors = { };
+		public Color[] CustomColors = { };
 	}
 
 	public class GameSettings

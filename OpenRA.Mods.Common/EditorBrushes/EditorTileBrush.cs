@@ -11,9 +11,9 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using OpenRA.Graphics;
+using OpenRA.Primitives;
 
 namespace OpenRA.Mods.Common.Widgets
 {
@@ -167,7 +167,7 @@ namespace OpenRA.Mods.Common.Widgets
 
 			Func<CPos, CVec, CPos> findEdge = (refCell, direction) =>
 			{
-				for (;;)
+				while (true)
 				{
 					var newCell = refCell + direction;
 					if (!shouldPaint(newCell))

@@ -27,7 +27,7 @@ namespace OpenRA.Mods.Common.Activities
 			this.context = context;
 		}
 
-		public override Activity Tick(Actor self)
+		public override bool Tick(Actor self)
 		{
 			try
 			{
@@ -40,16 +40,14 @@ namespace OpenRA.Mods.Common.Activities
 			}
 
 			Dispose();
-			return NextActivity;
+			return true;
 		}
 
-		public override bool Cancel(Actor self, bool keepQueue = false)
+		public override void Cancel(Actor self, bool keepQueue = false)
 		{
-			if (!base.Cancel(self, keepQueue))
-				return false;
-
+			base.Cancel(self, keepQueue);
 			Dispose();
-			return true;
+			return;
 		}
 
 		public void Dispose()

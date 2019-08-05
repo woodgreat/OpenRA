@@ -13,13 +13,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using OpenRA.Graphics;
+using OpenRA.Primitives;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets.Logic
 {
 	public class SettingsLogic : ChromeLogic
 	{
-		enum PanelType { Display, Audio, Input, Advanced }
+		enum PanelType { Display, Audio, Input, Hotkeys, Advanced }
 
 		static readonly string OriginalSoundDevice;
 		static readonly WindowMode OriginalGraphicsMode;
@@ -61,6 +62,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			RegisterSettingsPanel(PanelType.Display, InitDisplayPanel, ResetDisplayPanel, "DISPLAY_PANEL", "DISPLAY_TAB");
 			RegisterSettingsPanel(PanelType.Audio, InitAudioPanel, ResetAudioPanel, "AUDIO_PANEL", "AUDIO_TAB");
 			RegisterSettingsPanel(PanelType.Input, InitInputPanel, ResetInputPanel, "INPUT_PANEL", "INPUT_TAB");
+			RegisterSettingsPanel(PanelType.Hotkeys, InitHotkeysPanel, ResetHotkeysPanel, "HOTKEYS_PANEL", "HOTKEYS_TAB");
 			RegisterSettingsPanel(PanelType.Advanced, InitAdvancedPanel, ResetAdvancedPanel, "ADVANCED_PANEL", "ADVANCED_TAB");
 
 			panelContainer.Get<ButtonWidget>("BACK_BUTTON").OnClick = () =>
@@ -70,11 +72,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				current.Save();
 
 				Action closeAndExit = () => { Ui.CloseWindow(); onExit(); };
-				if (OriginalSoundDevice != current.Sound.Device ||
-					OriginalGraphicsMode != current.Graphics.Mode ||
-					OriginalGraphicsWindowedSize != current.Graphics.WindowedSize ||
-					OriginalGraphicsFullscreenSize != current.Graphics.FullscreenSize ||
-					OriginalServerDiscoverNatDevices != current.Server.DiscoverNatDevices)
+				if (current.Sound.Device != OriginalSoundDevice ||
+				    current.Graphics.Mode != OriginalGraphicsMode ||
+				    current.Graphics.WindowedSize != OriginalGraphicsWindowedSize ||
+					current.Graphics.FullscreenSize != OriginalGraphicsFullscreenSize ||
+					current.Server.DiscoverNatDevices != OriginalServerDiscoverNatDevices)
 				{
 					Action restart = () =>
 					{
@@ -123,7 +125,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			ss.OnChange += x => field.SetValue(group, x);
 		}
 
-		static void BindHotkeyPref(HotkeyDefinition hd, HotkeyManager manager, Widget template, Widget parent)
+		static void BindHotkeyPref(HotkeyDefinition hd, HotkeyManager manager, Widget template, Widget parent, Widget remapDialogRoot, Widget remapDialogPlaceholder)
 		{
 			var key = template.Clone() as Widget;
 			key.Id = hd.Name;
@@ -131,9 +133,53 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 			key.Get<LabelWidget>("FUNCTION").GetText = () => hd.Description + ":";
 
-			var textBox = key.Get<HotkeyEntryWidget>("HOTKEY");
-			textBox.Key = manager[hd.Name].GetValue();
-			textBox.OnLoseFocus = () => manager.Set(hd.Name, textBox.Key);
+			var remapButton = key.Get<ButtonWidget>("HOTKEY");
+			WidgetUtils.TruncateButtonToTooltip(remapButton, manager[hd.Name].GetValue().DisplayString());
+
+			if (manager.GetFirstDuplicate(hd.Name, manager[hd.Name].GetValue(), hd) != null)
+				remapButton.GetColor = () => ChromeMetrics.Get<Color>("HotkeyColorInvalid");
+
+			remapButton.OnClick = () =>
+			{
+				remapDialogRoot.RemoveChildren();
+
+				if (remapButton.IsHighlighted())
+				{
+					remapButton.IsHighlighted = () => false;
+
+					if (remapDialogPlaceholder != null)
+						remapDialogPlaceholder.Visible = true;
+
+					return;
+				}
+
+				if (remapDialogPlaceholder != null)
+					remapDialogPlaceholder.Visible = false;
+
+				var siblings = parent.Children;
+				foreach (var sibling in siblings)
+				{
+					var button = sibling.GetOrNull<ButtonWidget>("HOTKEY");
+					if (button != null)
+						button.IsHighlighted = () => false;
+				}
+
+				remapButton.IsHighlighted = () => true;
+
+				Ui.LoadWidget("HOTKEY_DIALOG", remapDialogRoot, new WidgetArgs
+				{
+					{
+						"onSave", () =>
+						{
+							WidgetUtils.TruncateButtonToTooltip(remapButton, manager[hd.Name].GetValue().DisplayString());
+							remapButton.GetColor = () => ChromeMetrics.Get<Color>("ButtonTextColor");
+						}
+					},
+					{ "hotkeyDefinition", hd },
+					{ "hotkeyManager", manager },
+				});
+			};
+
 			parent.AddChild(key);
 		}
 
@@ -266,7 +312,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			var colorDropdown = panel.Get<DropDownButtonWidget>("PLAYERCOLOR");
 			colorDropdown.IsDisabled = () => worldRenderer.World.Type != WorldType.Shellmap;
 			colorDropdown.OnMouseDown = _ => ColorPickerLogic.ShowColorDropDown(colorDropdown, colorPreview, worldRenderer.World);
-			colorDropdown.Get<ColorBlockWidget>("COLORBLOCK").GetColor = () => ps.Color.RGB;
+			colorDropdown.Get<ColorBlockWidget>("COLORBLOCK").GetColor = () => ps.Color;
 
 			return () =>
 			{
@@ -408,6 +454,11 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			zoomModifierDropdown.OnMouseDown = _ => ShowZoomModifierDropdown(zoomModifierDropdown, gs);
 			zoomModifierDropdown.GetText = () => gs.ZoomModifier.ToString();
 
+			return () => { };
+		}
+
+		Action InitHotkeysPanel(Widget panel)
+		{
 			var hotkeyList = panel.Get<ScrollPanelWidget>("HOTKEY_LIST");
 			hotkeyList.Layout = new GridLayout(hotkeyList);
 			var hotkeyHeader = hotkeyList.Get<ScrollItemWidget>("HEADER");
@@ -434,10 +485,12 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 					var types = FieldLoader.GetValue<string[]>("Types", typesNode.Value.Value);
 					var added = new HashSet<HotkeyDefinition>();
 					var template = templates.Get(templateNode.Value.Value);
+					var remapDialogRoot = panel.Get("HOTKEY_DIALOG_ROOT");
+					var remapDialogPlaceholder = panel.GetOrNull("HOTKEY_DIALOG_PLACEHOLDER");
 					foreach (var t in types)
 						foreach (var hd in modData.Hotkeys.Definitions.Where(k => k.Types.Contains(t)))
 							if (added.Add(hd))
-								BindHotkeyPref(hd, modData.Hotkeys, template, hotkeyList);
+								BindHotkeyPref(hd, modData.Hotkeys, template, hotkeyList, remapDialogRoot, remapDialogPlaceholder);
 				}
 			}
 
@@ -461,16 +514,22 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				gs.AllowZoom = dgs.AllowZoom;
 				gs.ZoomModifier = dgs.ZoomModifier;
 
+				panel.Get<SliderWidget>("SCROLLSPEED_SLIDER").Value = gs.ViewportEdgeScrollStep;
+				panel.Get<SliderWidget>("UI_SCROLLSPEED_SLIDER").Value = gs.UIScrollSpeed;
+
+				MakeMouseFocusSettingsLive();
+			};
+		}
+
+		Action ResetHotkeysPanel(Widget panel)
+		{
+			return () =>
+			{
 				foreach (var hd in modData.Hotkeys.Definitions)
 				{
 					modData.Hotkeys.Set(hd.Name, hd.Default);
 					panel.Get(hd.Name).Get<HotkeyEntryWidget>("HOTKEY").Key = hd.Default;
 				}
-
-				panel.Get<SliderWidget>("SCROLLSPEED_SLIDER").Value = gs.ViewportEdgeScrollStep;
-				panel.Get<SliderWidget>("UI_SCROLLSPEED_SLIDER").Value = gs.UIScrollSpeed;
-
-				MakeMouseFocusSettingsLive();
 			};
 		}
 
@@ -497,7 +556,6 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			BindCheckboxPref(panel, "REPLAY_COMMANDS_CHECKBOX", ds, "EnableDebugCommandsInReplays");
 			BindCheckboxPref(panel, "CHECKUNSYNCED_CHECKBOX", ds, "SyncCheckUnsyncedCode");
 			BindCheckboxPref(panel, "CHECKBOTSYNC_CHECKBOX", ds, "SyncCheckBotModuleCode");
-			BindCheckboxPref(panel, "STRICTACTIVITY_CHECKBOX", ds, "StrictActivityChecking");
 
 			panel.Get("DEBUG_OPTIONS").IsVisible = () => ds.DisplayDeveloperSettings;
 			panel.Get("DEBUG_HIDDEN_LABEL").IsVisible = () => !ds.DisplayDeveloperSettings;

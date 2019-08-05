@@ -25,18 +25,12 @@ namespace OpenRA.Mods.Common.Activities
 			IsInterruptible = interruptible;
 		}
 
-		public override Activity Tick(Actor self)
+		public override bool Tick(Actor self)
 		{
-			return (remainingTicks-- == 0) ? NextActivity : this;
-		}
+			if (IsCanceling)
+				return true;
 
-		public override bool Cancel(Actor self, bool keepQueue = false)
-		{
-			if (!base.Cancel(self, keepQueue))
-				return false;
-
-			remainingTicks = 0;
-			return true;
+			return remainingTicks-- == 0;
 		}
 	}
 
@@ -51,18 +45,12 @@ namespace OpenRA.Mods.Common.Activities
 			IsInterruptible = interruptible;
 		}
 
-		public override Activity Tick(Actor self)
+		public override bool Tick(Actor self)
 		{
-			return (f == null || f()) ? NextActivity : this;
-		}
+			if (IsCanceling)
+				return true;
 
-		public override bool Cancel(Actor self, bool keepQueue = false)
-		{
-			if (!base.Cancel(self, keepQueue))
-				return false;
-
-			f = null;
-			return true;
+			return f == null || f();
 		}
 	}
 }

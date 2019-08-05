@@ -9,7 +9,6 @@
  */
 #endregion
 
-using System.Drawing;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Mods.Common.Traits;
@@ -25,7 +24,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 		[ObjectCreator.UseCtor]
 		public GameInfoStatsLogic(Widget widget, World world, OrderManager orderManager, WorldRenderer worldRenderer)
 		{
-			var player = world.RenderPlayer ?? world.LocalPlayer;
+			var player = world.LocalPlayer;
 			var playerPanel = widget.Get<ScrollPanelWidget>("PLAYER_LIST");
 
 			if (player != null && !player.NonCombatant)
@@ -106,7 +105,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 
 						return name.Update(Pair.New(pp.PlayerName, suffix));
 					};
-					nameLabel.GetColor = () => pp.Color.RGB;
+					nameLabel.GetColor = () => pp.Color;
 
 					var flag = item.Get<ImageWidget>("FACTIONFLAG");
 					flag.GetImageCollection = () => "flags";

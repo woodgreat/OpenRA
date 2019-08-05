@@ -10,7 +10,6 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Drawing;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Orders;
 using OpenRA.Primitives;
@@ -51,7 +50,8 @@ namespace OpenRA.Mods.Common.Traits
 		public readonly string EnterCursor = "enter";
 		public readonly string EnterBlockedCursor = "enter-blocked";
 
-		[VoiceReference] public readonly string Voice = "Action";
+		[VoiceReference]
+		public readonly string Voice = "Action";
 
 		public override object Create(ActorInitializer init) { return new Captures(init.Self, this); }
 	}
@@ -95,15 +95,11 @@ namespace OpenRA.Mods.Common.Traits
 			if (order.OrderString != "CaptureActor" || IsTraitDisabled)
 				return;
 
-			var target = self.ResolveFrozenActorOrder(order, Color.Red);
-			if (target.Type != TargetType.Actor)
-				return;
-
 			if (!order.Queued)
 				self.CancelActivity();
 
-			self.SetTargetLine(target, Color.Red);
-			self.QueueActivity(new CaptureActor(self, target.Actor));
+			self.QueueActivity(new CaptureActor(self, order.Target));
+			self.ShowTargetLines();
 		}
 
 		protected override void TraitEnabled(Actor self) { captureManager.RefreshCaptures(self); }

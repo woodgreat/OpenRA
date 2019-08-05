@@ -19,7 +19,7 @@ namespace OpenRA.Traits
 	public struct Target
 	{
 		public static readonly Target[] None = { };
-		public static readonly Target Invalid = new Target();
+		public static readonly Target Invalid = default(Target);
 
 		readonly TargetType type;
 		readonly Actor actor;
@@ -183,12 +183,9 @@ namespace OpenRA.Traits
 				switch (Type)
 				{
 					case TargetType.Actor:
-						if (!actor.Targetables.Any(Exts.IsTraitEnabled))
-							return new[] { actor.CenterPosition };
-
 						return actor.GetTargetablePositions();
 					case TargetType.FrozenActor:
-						return new[] { frozen.CenterPosition };
+						return frozen.TargetablePositions;
 					case TargetType.Terrain:
 						return terrainPositions;
 					default:

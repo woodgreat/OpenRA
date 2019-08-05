@@ -10,9 +10,9 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Drawing;
 using OpenRA.Activities;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Activities
@@ -26,7 +26,6 @@ namespace OpenRA.Mods.Common.Activities
 		Target target;
 		Target lastVisibleTarget;
 		bool useLastVisibleTarget;
-		bool soundPlayed;
 
 		public Fly(Actor self, Target t, WPos? initialTargetPosition = null, Color? targetLineColor = null)
 		{
@@ -51,87 +50,191 @@ namespace OpenRA.Mods.Common.Activities
 			this.minRange = minRange;
 		}
 
-		public static void FlyToward(Actor self, Aircraft aircraft, int desiredFacing, WDist desiredAltitude, int turnSpeedOverride = -1)
+		public static void FlyTick(Actor self, Aircraft aircraft, int desiredFacing, WDist desiredAltitude, WVec moveOverride, int turnSpeedOverride = -1)
 		{
-			desiredAltitude = new WDist(aircraft.CenterPosition.Z) + desiredAltitude - self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
-
-			var move = aircraft.FlyStep(aircraft.Facing);
-			var altitude = aircraft.CenterPosition.Z;
+			var dat = self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
+			var move = aircraft.Info.CanSlide ? aircraft.FlyStep(desiredFacing) : aircraft.FlyStep(aircraft.Facing);
+			if (moveOverride != WVec.Zero)
+				move = moveOverride;
 
 			var turnSpeed = turnSpeedOverride > -1 ? turnSpeedOverride : aircraft.TurnSpeed;
 			aircraft.Facing = Util.TickFacing(aircraft.Facing, desiredFacing, turnSpeed);
 
-			if (altitude != desiredAltitude.Length)
+			// Note: we assume that if move.Z is not zero, it's intentional and we want to move in that vertical direction instead of towards desiredAltitude.
+			// If that is not desired, the place that calls this should make sure moveOverride.Z is zero.
+			if (dat != desiredAltitude || move.Z != 0)
 			{
-				var delta = move.HorizontalLength * aircraft.Info.MaximumPitch.Tan() / 1024;
-				var dz = (desiredAltitude.Length - altitude).Clamp(-delta, delta);
-				move += new WVec(0, 0, dz);
+				var maxDelta = move.HorizontalLength * aircraft.Info.MaximumPitch.Tan() / 1024;
+				var moveZ = move.Z != 0 ? move.Z : (desiredAltitude.Length - dat.Length);
+				var deltaZ = moveZ.Clamp(-maxDelta, maxDelta);
+				move = new WVec(move.X, move.Y, deltaZ);
 			}
 
 			aircraft.SetPosition(self, aircraft.CenterPosition + move);
 		}
 
-		public override Activity Tick(Actor self)
+		public static void FlyTick(Actor self, Aircraft aircraft, int desiredFacing, WDist desiredAltitude, int turnSpeedOverride = -1)
+		{
+			FlyTick(self, aircraft, desiredFacing, desiredAltitude, WVec.Zero, turnSpeedOverride);
+		}
+
+		// Should only be used for vertical-only movement, usually VTOL take-off or land. Terrain-induced altitude changes should always be handled by FlyTick.
+		public static bool VerticalTakeOffOrLandTick(Actor self, Aircraft aircraft, int desiredFacing, WDist desiredAltitude, int turnSpeedOverride = -1)
+		{
+			var dat = self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
+			var move = WVec.Zero;
+
+			var turnSpeed = turnSpeedOverride > -1 ? turnSpeedOverride : aircraft.TurnSpeed;
+			aircraft.Facing = Util.TickFacing(aircraft.Facing, desiredFacing, turnSpeed);
+
+			if (dat != desiredAltitude)
+			{
+				var maxDelta = aircraft.Info.AltitudeVelocity.Length;
+				var deltaZ = (desiredAltitude.Length - dat.Length).Clamp(-maxDelta, maxDelta);
+				move += new WVec(0, 0, deltaZ);
+			}
+			else
+				return false;
+
+			aircraft.SetPosition(self, aircraft.CenterPosition + move);
+			return true;
+		}
+
+		public override bool Tick(Actor self)
 		{
 			// Refuse to take off if it would land immediately again.
 			if (aircraft.ForceLanding)
 				Cancel(self);
 
-			if (IsCanceled)
-				return NextActivity;
+			var dat = self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition);
+			if (IsCanceling)
+			{
+				// We must return the actor to a sensible height before continuing.
+				// If the aircraft is on the ground we queue TakeOff to manage the influence reservation and takeoff sounds etc.
+				// TODO: It would be better to not take off at all, but we lack the plumbing to detect current airborne/landed state.
+				// If the aircraft lands when idle and is idle, we let the default idle handler manage this.
+				// TODO: Remove this after fixing all activities to work properly with arbitrary starting altitudes.
+				var landWhenIdle = aircraft.Info.IdleBehavior == IdleBehaviorType.Land;
+				var skipHeightAdjustment = landWhenIdle && self.CurrentActivity.IsCanceling && self.CurrentActivity.NextActivity == null;
+				if (aircraft.Info.CanHover && !skipHeightAdjustment && dat != aircraft.Info.CruiseAltitude)
+				{
+					if (dat <= aircraft.LandAltitude)
+						QueueChild(new TakeOff(self, target));
+					else
+						VerticalTakeOffOrLandTick(self, aircraft, aircraft.Facing, aircraft.Info.CruiseAltitude);
+
+					return false;
+				}
+
+				return true;
+			}
+			else if (dat <= aircraft.LandAltitude)
+			{
+				QueueChild(new TakeOff(self, target));
+				return false;
+			}
 
 			bool targetIsHiddenActor;
 			target = target.Recalculate(self.Owner, out targetIsHiddenActor);
 			if (!targetIsHiddenActor && target.Type == TargetType.Actor)
 				lastVisibleTarget = Target.FromTargetPositions(target);
 
-			var oldUseLastVisibleTarget = useLastVisibleTarget;
 			useLastVisibleTarget = targetIsHiddenActor || !target.IsValidFor(self);
-
-			// Update target lines if required
-			if (useLastVisibleTarget != oldUseLastVisibleTarget && targetLineColor.HasValue)
-				self.SetTargetLine(useLastVisibleTarget ? lastVisibleTarget : target, targetLineColor.Value, false);
 
 			// Target is hidden or dead, and we don't have a fallback position to move towards
 			if (useLastVisibleTarget && !lastVisibleTarget.IsValidFor(self))
-				return NextActivity;
+				return true;
 
-			var pos = self.CenterPosition;
 			var checkTarget = useLastVisibleTarget ? lastVisibleTarget : target;
-
-			if (!soundPlayed && aircraft.Info.TakeoffSounds.Length > 0 && self.IsAtGroundLevel())
-			{
-				Game.Sound.Play(SoundType.World, aircraft.Info.TakeoffSounds.Random(self.World.SharedRandom), aircraft.CenterPosition);
-				soundPlayed = true;
-			}
+			var pos = aircraft.GetPosition();
+			var delta = checkTarget.CenterPosition - pos;
+			var desiredFacing = delta.HorizontalLengthSquared != 0 ? delta.Yaw.Facing : aircraft.Facing;
 
 			// Inside the target annulus, so we're done
-			var insideMaxRange = maxRange.Length > 0 && checkTarget.IsInRange(aircraft.CenterPosition, maxRange);
-			var insideMinRange = minRange.Length > 0 && checkTarget.IsInRange(aircraft.CenterPosition, minRange);
+			var insideMaxRange = maxRange.Length > 0 && checkTarget.IsInRange(pos, maxRange);
+			var insideMinRange = minRange.Length > 0 && checkTarget.IsInRange(pos, minRange);
 			if (insideMaxRange && !insideMinRange)
-				return NextActivity;
+				return true;
 
-			var delta = checkTarget.CenterPosition - self.CenterPosition;
+			var isSlider = aircraft.Info.CanSlide;
+			var move = isSlider ? aircraft.FlyStep(desiredFacing) : aircraft.FlyStep(aircraft.Facing);
 
-			// The next move would overshoot, so consider it close enough
-			var move = aircraft.FlyStep(aircraft.Facing);
+			// Inside the minimum range, so reverse if we CanSlide
+			if (isSlider && insideMinRange)
+			{
+				FlyTick(self, aircraft, desiredFacing, aircraft.Info.CruiseAltitude, -move);
+				return false;
+			}
+
+			// The next move would overshoot, so consider it close enough or set final position if we CanSlide
 			if (delta.HorizontalLengthSquared < move.HorizontalLengthSquared)
-				return NextActivity;
+			{
+				// For VTOL landing to succeed, it must reach the exact target position,
+				// so for the final move it needs to behave as if it had CanSlide.
+				if (isSlider || aircraft.Info.VTOL)
+				{
+					// Set final (horizontal) position
+					if (delta.HorizontalLengthSquared != 0)
+					{
+						// Ensure we don't include a non-zero vertical component here that would move us away from CruiseAltitude
+						var deltaMove = new WVec(delta.X, delta.Y, 0);
+						FlyTick(self, aircraft, desiredFacing, dat, deltaMove);
+					}
 
-			// Don't turn until we've reached the cruise altitude
-			var desiredFacing = delta.Yaw.Facing;
-			var targetAltitude = aircraft.CenterPosition.Z + aircraft.Info.CruiseAltitude.Length - self.World.Map.DistanceAboveTerrain(aircraft.CenterPosition).Length;
-			if (aircraft.CenterPosition.Z < targetAltitude)
-				desiredFacing = aircraft.Facing;
+					// Move to CruiseAltitude, if not already there
+					if (dat != aircraft.Info.CruiseAltitude)
+					{
+						Fly.VerticalTakeOffOrLandTick(self, aircraft, aircraft.Facing, aircraft.Info.CruiseAltitude);
+						return false;
+					}
+				}
 
-			FlyToward(self, aircraft, desiredFacing, aircraft.Info.CruiseAltitude);
+				return true;
+			}
 
-			return this;
+			if (!isSlider)
+			{
+				// Using the turn rate, compute a hypothetical circle traced by a continuous turn.
+				// If it contains the destination point, it's unreachable without more complex manuvering.
+				var turnRadius = CalculateTurnRadius(aircraft.MovementSpeed, aircraft.TurnSpeed);
+
+				// The current facing is a tangent of the minimal turn circle.
+				// Make a perpendicular vector, and use it to locate the turn's center.
+				var turnCenterFacing = aircraft.Facing;
+				turnCenterFacing += Util.GetNearestFacing(aircraft.Facing, desiredFacing) > 0 ? 64 : -64;
+
+				var turnCenterDir = new WVec(0, -1024, 0).Rotate(WRot.FromFacing(turnCenterFacing));
+				turnCenterDir *= turnRadius;
+				turnCenterDir /= 1024;
+
+				// Compare with the target point, and keep flying away if it's inside the circle.
+				var turnCenter = aircraft.CenterPosition + turnCenterDir;
+				if ((checkTarget.CenterPosition - turnCenter).HorizontalLengthSquared < turnRadius * turnRadius)
+					desiredFacing = aircraft.Facing;
+			}
+
+			FlyTick(self, aircraft, desiredFacing, aircraft.Info.CruiseAltitude);
+
+			return false;
 		}
 
 		public override IEnumerable<Target> GetTargets(Actor self)
 		{
 			yield return target;
+		}
+
+		public override IEnumerable<TargetLineNode> TargetLineNodes(Actor self)
+		{
+			if (targetLineColor.HasValue)
+				yield return new TargetLineNode(useLastVisibleTarget ? lastVisibleTarget : target, targetLineColor.Value);
+		}
+
+		public static int CalculateTurnRadius(int speed, int turnSpeed)
+		{
+			// turnSpeed -> divide into 256 to get the number of ticks per complete rotation
+			// speed -> multiply to get distance travelled per rotation (circumference)
+			// 45 -> divide by 2*pi to get the turn radius: 45==256/(2*pi), with some extra leeway
+			return 45 * speed / turnSpeed;
 		}
 	}
 }

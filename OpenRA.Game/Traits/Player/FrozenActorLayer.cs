@@ -11,7 +11,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using OpenRA.Graphics;
 using OpenRA.Primitives;
@@ -43,6 +42,7 @@ namespace OpenRA.Traits
 
 		public Player Owner { get; private set; }
 		public BitSet<TargetableType> TargetTypes { get; private set; }
+		public WPos[] TargetablePositions { get; private set; }
 
 		public ITooltipInfo TooltipInfo { get; private set; }
 		public Player TooltipOwner { get; private set; }
@@ -118,6 +118,7 @@ namespace OpenRA.Traits
 		{
 			Owner = actor.Owner;
 			TargetTypes = actor.GetEnabledTargetTypes();
+			TargetablePositions = actor.GetTargetablePositions().ToArray();
 			Hidden = !actor.CanBeViewedByPlayer(viewer);
 
 			if (health != null)
@@ -203,8 +204,11 @@ namespace OpenRA.Traits
 
 	public class FrozenActorLayer : IRender, ITick, ISync
 	{
-		[Sync] public int VisibilityHash;
-		[Sync] public int FrozenHash;
+		[Sync]
+		public int VisibilityHash;
+
+		[Sync]
+		public int FrozenHash;
 
 		readonly int binSize;
 		readonly World world;

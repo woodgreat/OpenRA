@@ -10,9 +10,6 @@
 #endregion
 
 using System;
-using System.Drawing;
-using OpenRA.Graphics;
-using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.Widgets
 {
@@ -22,10 +19,11 @@ namespace OpenRA.Mods.Common.Widgets
 		public double ExpA = 1.0e-3;
 		public double ExpB = 6.908;
 
-		public ExponentialSliderWidget() :
-			base() { }
-		public ExponentialSliderWidget(ExponentialSliderWidget other) :
-			base(other) { }
+		public ExponentialSliderWidget()
+			: base() { }
+
+		public ExponentialSliderWidget(ExponentialSliderWidget other)
+			: base(other) { }
 
 		float ExpFromLinear(float x)
 		{

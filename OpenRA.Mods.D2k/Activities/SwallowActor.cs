@@ -10,13 +10,13 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using OpenRA.Activities;
 using OpenRA.GameRules;
 using OpenRA.Mods.Common.Effects;
 using OpenRA.Mods.Common.Traits;
 using OpenRA.Mods.D2k.Traits;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.D2k.Activities
@@ -95,7 +95,7 @@ namespace OpenRA.Mods.D2k.Activities
 			return true;
 		}
 
-		public override Activity Tick(Actor self)
+		public override bool Tick(Actor self)
 		{
 			switch (stance)
 			{
@@ -109,7 +109,7 @@ namespace OpenRA.Mods.D2k.Activities
 					break;
 				case AttackState.Burrowed:
 					if (--countdown > 0)
-						return this;
+						return false;
 
 					var targetLocation = target.Actor.Location;
 
@@ -117,14 +117,14 @@ namespace OpenRA.Mods.D2k.Activities
 					if ((burrowLocation - targetLocation).Length > NearEnough)
 					{
 						RevokeCondition(self);
-						return NextActivity;
+						return true;
 					}
 
 					// The target reached solid ground
 					if (!positionable.CanEnterCell(targetLocation, null, false))
 					{
 						RevokeCondition(self);
-						return NextActivity;
+						return true;
 					}
 
 					var targets = self.World.ActorMap.GetActorsAt(targetLocation)
@@ -133,7 +133,7 @@ namespace OpenRA.Mods.D2k.Activities
 					if (!targets.Any())
 					{
 						RevokeCondition(self);
-						return NextActivity;
+						return true;
 					}
 
 					stance = AttackState.Attacking;
@@ -144,7 +144,7 @@ namespace OpenRA.Mods.D2k.Activities
 					break;
 				case AttackState.Attacking:
 					if (--countdown > 0)
-						return this;
+						return false;
 
 					sandworm.IsAttacking = false;
 
@@ -156,10 +156,10 @@ namespace OpenRA.Mods.D2k.Activities
 					}
 
 					RevokeCondition(self);
-					return NextActivity;
+					return true;
 			}
 
-			return this;
+			return false;
 		}
 
 		void RevokeCondition(Actor self)

@@ -10,23 +10,26 @@
 #endregion
 
 using OpenRA.Graphics;
+using OpenRA.Primitives;
 
 namespace OpenRA.Traits
 {
 	[Desc("Add this to the World actor definition.")]
 	public class FixedColorPaletteInfo : ITraitInfo
 	{
+		[PaletteReference]
 		[Desc("The name of the palette to base off.")]
-		[PaletteReference] public readonly string Base = TileSet.TerrainPaletteInternalName;
+		public readonly string Base = TileSet.TerrainPaletteInternalName;
 
+		[PaletteDefinition]
 		[Desc("The name of the resulting palette")]
-		[PaletteDefinition] public readonly string Name = "resources";
+		public readonly string Name = "resources";
 
 		[Desc("Remap these indices to pre-defined colors.")]
 		public readonly int[] RemapIndex = { };
 
 		[Desc("The fixed color to remap.")]
-		public readonly HSLColor Color;
+		public readonly Color Color;
 
 		[Desc("Luminosity range to span.")]
 		public readonly float Ramp = 0.05f;

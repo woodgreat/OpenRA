@@ -9,18 +9,20 @@
  */
 #endregion
 
-using System.Drawing;
 using OpenRA.Primitives;
 
 namespace OpenRA.Support
 {
 	public static class PerfHistory
 	{
-		static readonly Color[] Colors = { Color.Red, Color.Green,
+		static readonly Color[] Colors =
+		{
+			Color.Red, Color.Green,
 			Color.Orange, Color.Yellow,
 			Color.Fuchsia, Color.Lime,
 			Color.LightBlue, Color.Blue,
-			Color.White, Color.Teal };
+			Color.White, Color.Teal
+		};
 
 		static int nextColor;
 

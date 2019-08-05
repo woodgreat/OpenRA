@@ -9,9 +9,8 @@
  */
 #endregion
 
-using System;
-using System.Drawing;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Activities
@@ -19,59 +18,68 @@ namespace OpenRA.Mods.Common.Activities
 	class EnterTransport : Enter
 	{
 		readonly Passenger passenger;
-		readonly int maxTries;
-		Actor transport;
-		Cargo cargo;
 
-		public EnterTransport(Actor self, Actor transport, int maxTries = 0, bool repathWhileMoving = true)
-			: base(self, transport, EnterBehaviour.Exit, maxTries, repathWhileMoving, Color.Green)
+		Actor enterActor;
+		Cargo enterCargo;
+		Aircraft enterAircraft;
+
+		public EnterTransport(Actor self, Target target)
+			: base(self, target, Color.Green)
 		{
-			this.transport = transport;
-			this.maxTries = maxTries;
-			cargo = transport.Trait<Cargo>();
 			passenger = self.Trait<Passenger>();
 		}
 
-		protected override void Unreserve(Actor self, bool abort) { passenger.Unreserve(self); }
-		protected override bool CanReserve(Actor self) { return cargo.Unloading || cargo.CanLoad(transport, self); }
-		protected override ReserveStatus Reserve(Actor self)
+		protected override bool TryStartEnter(Actor self, Actor targetActor)
 		{
-			var status = base.Reserve(self);
-			if (status != ReserveStatus.Ready)
-				return status;
-			if (passenger.Reserve(self, cargo))
-				return ReserveStatus.Ready;
-			return ReserveStatus.Pending;
+			enterActor = targetActor;
+			enterCargo = targetActor.TraitOrDefault<Cargo>();
+			enterAircraft = targetActor.TraitOrDefault<Aircraft>();
+
+			// Make sure we can still enter the transport
+			// (but not before, because this may stop the actor in the middle of nowhere)
+			if (enterCargo == null || !passenger.Reserve(self, enterCargo))
+			{
+				Cancel(self, true);
+				return false;
+			}
+
+			if (enterAircraft != null && !enterAircraft.AtLandAltitude)
+				return false;
+
+			return true;
 		}
 
-		protected override void OnInside(Actor self)
+		protected override void OnEnterComplete(Actor self, Actor targetActor)
 		{
 			self.World.AddFrameEndTask(w =>
 			{
-				if (self.IsDead || transport.IsDead || !cargo.CanLoad(transport, self))
+				// Make sure the target hasn't changed while entering
+				// OnEnterComplete is only called if targetActor is alive
+				if (targetActor != enterActor)
 					return;
 
-				cargo.Load(transport, self);
+				if (!enterCargo.CanLoad(enterActor, self))
+					return;
+
+				enterCargo.Load(enterActor, self);
 				w.Remove(self);
+
+				// Preemptively cancel any activities to avoid an edge-case where successively queued
+				// EnterTransports corrupt the actor state. Activities are cancelled again on unload
+				self.CancelActivity();
 			});
-
-			Done(self);
-
-			// Preemptively cancel any activities to avoid an edge-case where successively queued
-			// EnterTransports corrupt the actor state. Activities are cancelled again on unload
-			self.CancelActivity();
 		}
 
-		protected override bool TryGetAlternateTarget(Actor self, int tries, ref Target target)
+		protected override void OnLastRun(Actor self)
 		{
-			if (tries > maxTries)
-				return false;
-			var type = target.Actor.Info.Name;
-			return TryGetAlternateTargetInCircle(
-				self, passenger.Info.AlternateTransportScanRange,
-				t => { transport = t.Actor; cargo = t.Actor.Trait<Cargo>(); }, // update transport and cargo
-				a => { var c = a.TraitOrDefault<Cargo>(); return c != null && c.Info.Types.Contains(passenger.Info.CargoType) && (c.Unloading || c.CanLoad(a, self)); },
-				new Func<Actor, bool>[] { a => a.Info.Name == type }); // Prefer transports of the same type
+			passenger.Unreserve(self);
+		}
+
+		public override void Cancel(Actor self, bool keepQueue = false)
+		{
+			passenger.Unreserve(self);
+
+			base.Cancel(self, keepQueue);
 		}
 	}
 }

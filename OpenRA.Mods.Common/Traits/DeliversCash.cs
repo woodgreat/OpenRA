@@ -10,9 +10,9 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Drawing;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Orders;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -32,7 +32,8 @@ namespace OpenRA.Mods.Common.Traits
 		[Desc("Sound to play when delivering cash")]
 		public readonly string[] Sounds = { };
 
-		[VoiceReference] public readonly string Voice = "Action";
+		[VoiceReference]
+		public readonly string Voice = "Action";
 
 		public object Create(ActorInitializer init) { return new DeliversCash(this); }
 	}
@@ -61,6 +62,9 @@ namespace OpenRA.Mods.Common.Traits
 
 		public string VoicePhraseForOrder(Actor self, Order order)
 		{
+			if (order.OrderString != "DeliverCash")
+				return null;
+
 			return info.Voice;
 		}
 
@@ -69,15 +73,11 @@ namespace OpenRA.Mods.Common.Traits
 			if (order.OrderString != "DeliverCash")
 				return;
 
-			var target = self.ResolveFrozenActorOrder(order, Color.Yellow);
-			if (target.Type != TargetType.Actor)
-				return;
-
 			if (!order.Queued)
 				self.CancelActivity();
 
-			self.SetTargetLine(target, Color.Yellow);
-			self.QueueActivity(new DonateCash(self, target.Actor, info.Payload, info.PlayerExperience));
+			self.QueueActivity(new DonateCash(self, order.Target, info.Payload, info.PlayerExperience));
+			self.ShowTargetLines();
 		}
 
 		void INotifyCashTransfer.OnAcceptingCash(Actor self, Actor donor) { }
@@ -85,7 +85,7 @@ namespace OpenRA.Mods.Common.Traits
 		void INotifyCashTransfer.OnDeliveringCash(Actor self, Actor acceptor)
 		{
 			if (info.Sounds.Length > 0)
-				Game.Sound.Play(SoundType.World, info.Sounds.Random(self.World.SharedRandom), self.CenterPosition);
+				Game.Sound.Play(SoundType.World, info.Sounds, self.World, self.CenterPosition);
 		}
 
 		public class DeliversCashOrderTargeter : UnitOrderTargeter

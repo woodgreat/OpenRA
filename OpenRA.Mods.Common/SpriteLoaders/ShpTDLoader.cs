@@ -11,7 +11,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using OpenRA.Graphics;
@@ -218,7 +217,7 @@ namespace OpenRA.Mods.Common.SpriteLoaders
 				bw.Write((ushort)0);
 				bw.Write((ushort)size.Width);
 				bw.Write((ushort)size.Height);
-				bw.Write((uint)0);
+				bw.Write(0U);
 
 				foreach (var f in compressedFrames)
 				{

@@ -11,10 +11,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using OpenRA.Graphics;
+using OpenRA.Mods.Common.Widgets;
+using OpenRA.Primitives;
 using OpenRA.Widgets;
 
 namespace OpenRA.Mods.Common.LoadScreens
@@ -62,8 +63,7 @@ namespace OpenRA.Mods.Common.LoadScreens
 			{
 				var widgetArgs = new WidgetArgs
 				{
-					{ "continueLoading", () =>
-						Game.RunAfterTick(() => Game.InitializeMod(modId, new Arguments())) },
+					{ "continueLoading", () => Game.RunAfterTick(() => Game.InitializeMod(modId, new Arguments())) },
 					{ "mod", selectedMod },
 					{ "content", content },
 				};
@@ -76,8 +76,7 @@ namespace OpenRA.Mods.Common.LoadScreens
 				{
 					{ "mod", selectedMod },
 					{ "content", content },
-					{ "onCancel", () =>
-						Game.RunAfterTick(() => Game.InitializeMod(modId, new Arguments())) }
+					{ "onCancel", () => Game.RunAfterTick(() => Game.InitializeMod(modId, new Arguments())) }
 				};
 
 				Ui.OpenWindow("CONTENT_PANEL", widgetArgs);

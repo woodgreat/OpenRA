@@ -9,10 +9,10 @@
  */
 #endregion
 
-using System.Drawing;
 using Eluant;
 using OpenRA.Mods.Common.Activities;
 using OpenRA.Mods.Common.Traits;
+using OpenRA.Primitives;
 using OpenRA.Scripting;
 using OpenRA.Traits;
 
@@ -33,8 +33,9 @@ namespace OpenRA.Mods.Common.Scripting
 		[Desc("Deliver cash to the target actor.")]
 		public void DeliverCash(Actor target)
 		{
-			Self.SetTargetLine(Target.FromActor(target), Color.Yellow);
-			Self.QueueActivity(new DonateCash(Self, target, info.Payload, info.PlayerExperience));
+			var t = Target.FromActor(target);
+			Self.QueueActivity(new DonateCash(Self, t, info.Payload, info.PlayerExperience));
+			Self.ShowTargetLines();
 		}
 	}
 
@@ -64,8 +65,9 @@ namespace OpenRA.Mods.Common.Scripting
 
 			var level = gainsExperience.Level;
 
-			Self.SetTargetLine(Target.FromActor(target), Color.Yellow);
-			Self.QueueActivity(new DonateExperience(Self, target, level, deliversExperience.PlayerExperience, targetGainsExperience));
+			var t = Target.FromActor(target);
+			Self.QueueActivity(new DonateExperience(Self, t, level, deliversExperience.PlayerExperience));
+			Self.ShowTargetLines();
 		}
 	}
 }

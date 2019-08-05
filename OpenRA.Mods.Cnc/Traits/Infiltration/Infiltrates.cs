@@ -10,7 +10,6 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Drawing;
 using OpenRA.Mods.Cnc.Activities;
 using OpenRA.Mods.Common;
 using OpenRA.Mods.Common.Activities;
@@ -76,7 +75,7 @@ namespace OpenRA.Mods.Cnc.Traits
 			if (IsTraitDisabled)
 				return false;
 
-			var targetTypes = new BitSet<TargetableType>();
+			var targetTypes = default(BitSet<TargetableType>);
 			if (order.Target.Type == TargetType.FrozenActor)
 				targetTypes = order.Target.FrozenActor.TargetTypes;
 
@@ -92,21 +91,34 @@ namespace OpenRA.Mods.Cnc.Traits
 				? Info.Voice : null;
 		}
 
+		public bool CanInfiltrateTarget(Actor self, Target target)
+		{
+			switch (target.Type)
+			{
+				case TargetType.Actor:
+					return Info.Types.Overlaps(target.Actor.GetEnabledTargetTypes()) &&
+					       Info.ValidStances.HasStance(self.Owner.Stances[target.Actor.Owner]);
+				case TargetType.FrozenActor:
+					return target.FrozenActor.IsValid && Info.Types.Overlaps(target.FrozenActor.TargetTypes) &&
+					       Info.ValidStances.HasStance(self.Owner.Stances[target.FrozenActor.Owner]);
+				default:
+					return false;
+			}
+		}
+
 		public void ResolveOrder(Actor self, Order order)
 		{
 			if (order.OrderString != "Infiltrate" || !IsValidOrder(self, order) || IsTraitDisabled)
 				return;
 
-			var target = self.ResolveFrozenActorOrder(order, Color.Red);
-			if (target.Type != TargetType.Actor
-				|| !Info.Types.Overlaps(target.Actor.GetAllTargetTypes()))
+			if (!CanInfiltrateTarget(self, order.Target))
 				return;
 
 			if (!order.Queued)
 				self.CancelActivity();
 
-			self.SetTargetLine(target, Color.Red);
-			self.QueueActivity(new Infiltrate(self, target.Actor, this));
+			self.QueueActivity(new Infiltrate(self, order.Target, this));
+			self.ShowTargetLines();
 		}
 	}
 

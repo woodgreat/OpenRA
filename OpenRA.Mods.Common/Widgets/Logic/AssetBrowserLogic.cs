@@ -112,7 +112,7 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 			{
 				colorDropdown.IsDisabled = () => currentPalette != colorPreview.PaletteName;
 				colorDropdown.OnMouseDown = _ => ColorPickerLogic.ShowColorDropDown(colorDropdown, colorPreview, world);
-				panel.Get<ColorBlockWidget>("COLORBLOCK").GetColor = () => Game.Settings.Player.Color.RGB;
+				panel.Get<ColorBlockWidget>("COLORBLOCK").GetColor = () => Game.Settings.Player.Color;
 			}
 
 			filenameInput = panel.Get<TextFieldWidget>("FILENAME_INPUT");
@@ -287,7 +287,9 @@ namespace OpenRA.Mods.Common.Widgets.Logic
 				() => currentFilename == filepath && currentPackage == package,
 				() => { LoadAsset(package, filepath); });
 
-			item.Get<LabelWidget>("TITLE").GetText = () => filepath;
+			var label = item.Get<LabelWithTooltipWidget>("TITLE");
+			WidgetUtils.TruncateLabelToTooltip(label, filepath);
+
 			item.IsVisible = () =>
 			{
 				bool visible;

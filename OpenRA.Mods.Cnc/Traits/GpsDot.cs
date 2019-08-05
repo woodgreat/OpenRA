@@ -20,15 +20,17 @@ namespace OpenRA.Mods.Cnc.Traits
 		[Desc("Sprite collection for symbols.")]
 		public readonly string Image = "gpsdot";
 
+		[SequenceReference("Image")]
 		[Desc("Sprite used for this actor.")]
-		[SequenceReference("Image")] public readonly string String = "Infantry";
+		public readonly string String = "Infantry";
 
-		[PaletteReference(true)] public readonly string IndicatorPalettePrefix = "player";
+		[PaletteReference(true)]
+		public readonly string IndicatorPalettePrefix = "player";
 
 		public object Create(ActorInitializer init) { return new GpsDot(this); }
 	}
 
-	class GpsDot : INotifyAddedToWorld, INotifyRemovedFromWorld
+	class GpsDot : INotifyCreated, INotifyAddedToWorld, INotifyRemovedFromWorld
 	{
 		readonly GpsDotInfo info;
 		GpsDotEffect effect;
@@ -38,9 +40,13 @@ namespace OpenRA.Mods.Cnc.Traits
 			this.info = info;
 		}
 
-		void INotifyAddedToWorld.AddedToWorld(Actor self)
+		void INotifyCreated.Created(Actor self)
 		{
 			effect = new GpsDotEffect(self, info);
+		}
+
+		void INotifyAddedToWorld.AddedToWorld(Actor self)
+		{
 			self.World.AddFrameEndTask(w => w.Add(effect));
 		}
 

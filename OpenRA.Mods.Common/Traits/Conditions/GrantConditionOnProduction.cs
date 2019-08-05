@@ -10,8 +10,8 @@
 #endregion
 
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -44,7 +44,9 @@ namespace OpenRA.Mods.Common.Traits
 		ConditionManager conditionManager;
 
 		int token = ConditionManager.InvalidConditionToken;
-		[Sync] int ticks;
+
+		[Sync]
+		int ticks;
 
 		public GrantConditionOnProduction(Actor self, GrantConditionOnProductionInfo info)
 		{

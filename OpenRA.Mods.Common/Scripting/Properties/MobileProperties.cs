@@ -60,10 +60,10 @@ namespace OpenRA.Mods.Common.Scripting
 		[Desc("Move to and enter the transport.")]
 		public void EnterTransport(Actor transport)
 		{
-			Self.QueueActivity(new EnterTransport(Self, transport, 1, false));
+			Self.QueueActivity(new EnterTransport(Self, Target.FromActor(transport)));
 		}
 
 		[Desc("Whether the actor can move (false if immobilized).")]
-		public bool IsMobile { get { return !mobile.IsTraitDisabled; } }
+		public bool IsMobile { get { return !mobile.IsTraitDisabled && !mobile.IsTraitPaused; } }
 	}
 }

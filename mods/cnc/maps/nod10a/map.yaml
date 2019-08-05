@@ -34,6 +34,7 @@ Players:
 		Color: F6D679
 		Allies: GDI
 		Enemies: Nod
+		Bot: campaign
 	PlayerReference@Nod:
 		Name: Nod
 		AllowBots: False
@@ -46,6 +47,7 @@ Players:
 		LockTeam: True
 		Allies: Nod
 		Enemies: GDI, Creeps
+
 Actors:
 	Actor0: brik
 		Location: 34,34
@@ -1339,6 +1341,5 @@ Actors:
 	RamboLocation: waypoint
 		Location: 5,47
 		Owner: Neutral
-
 
 Rules: cnc|rules/campaign-maprules.yaml, cnc|rules/campaign-tooltips.yaml, cnc|rules/campaign-palettes.yaml, rules.yaml

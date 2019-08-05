@@ -9,9 +9,9 @@
  */
 #endregion
 
-using System.Drawing;
 using System.Linq;
 using OpenRA.Graphics;
+using OpenRA.Primitives;
 using OpenRA.Traits;
 
 namespace OpenRA.Mods.Common.Traits
@@ -19,7 +19,8 @@ namespace OpenRA.Mods.Common.Traits
 	[Desc("Creates a single color palette without any base palette file.")]
 	class PaletteFromRGBAInfo : ITraitInfo
 	{
-		[FieldLoader.Require, PaletteDefinition]
+		[PaletteDefinition]
+		[FieldLoader.Require]
 		[Desc("internal palette name")]
 		public readonly string Name = null;
 
